@@ -1,6 +1,7 @@
 package org.tmsrv.graylog.influxdb;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -47,7 +48,7 @@ public class InfluxOutput implements MessageOutput {
 
     private Configuration configuration;
     private Set<String> tags = new HashSet<String>();
-    private Set<String> fields = new HashSet<String>();
+    private Map<String, String> fields = new HashMap<String, String>();
 
     private final AtomicBoolean isRunning = new AtomicBoolean(false);
 
@@ -59,11 +60,11 @@ public class InfluxOutput implements MessageOutput {
       this.configuration = configuration;
 
       String url = configuration.getString(CK_INFLUX_URL);
+      String database = configuration.getString(CK_INFLUX_DATABASE);
       String username = configuration.getString(CK_INFLUX_USERNAME);
       String password = configuration.getString(CK_INFLUX_PASSWORD);
-      String database = configuration.getString(CK_INFLUX_DATABASE);
 
-      LOG.info("Starting InfluxDB output (" + url + "/" + database + ")");
+      LOG.debug("Starting InfluxDB output (" + url + "/" + database + ")");
 
       this.influxDB = InfluxDBFactory.connect(url, username, password);
       this.influxDB.query(new Query("CREATE DATABASE " + database));
@@ -82,8 +83,18 @@ public class InfluxOutput implements MessageOutput {
         if (item.length() == 0) {
           continue;
         }
-        this.fields.add(item);
+        if (item.indexOf('=') > 0) {
+          String key = item.substring(0, item.indexOf('=')).trim();
+          String value = item.substring(item.indexOf('=') + 1).trim();
+
+          this.fields.put(key, value);
+        } else {
+          this.fields.put(item, null);
+        }
       }
+      this.isRunning.set(true);
+
+      LOG.info("InfluxDB output started (" + url + "/" + database + ")");
     }
 
 
@@ -103,7 +114,6 @@ public class InfluxOutput implements MessageOutput {
       if (pt != null) {
         this.influxDB.write(
           BatchPoints.builder()
-            .tag("async", "true")
             .point(pt)
             .build()
         );
@@ -128,7 +138,6 @@ public class InfluxOutput implements MessageOutput {
       if (pts.size() > 0) {
         this.influxDB.write(
           BatchPoints.builder()
-            .tag("async", "true")
             .points(pts)
             .build()
         );
@@ -137,10 +146,15 @@ public class InfluxOutput implements MessageOutput {
 
     @Override
     public void stop() {
-      LOG.info("Stopping InfluxDB output");
+      String url = configuration.getString(CK_INFLUX_URL);
+      String database = configuration.getString(CK_INFLUX_DATABASE);
+
+      LOG.debug("Stopping InfluxDB output (" + url + "/" + database + ")");
 
       this.isRunning.set(false);
       this.influxDB.close();
+
+      LOG.info("InfluxDB output stopped (" + url + "/" + database + ")");
     }
 
     private Point buildPoint(Message message) {
@@ -157,18 +171,23 @@ public class InfluxOutput implements MessageOutput {
         }
         builder.tag(key, String.valueOf(value));
       }
-      for (String key : this.fields) {
+      for (Map.Entry<String, String> entry : this.fields.entrySet()) {
+        String key = entry.getKey();
         Object value = fields.get(key);
 
         if (value == null) {
           return null;
         }
-        if (value instanceof Boolean) {
-            builder.addField(key, ((Boolean)value).booleanValue());
-        } else if (value instanceof Number) {
-            builder.addField(key, (Number)value);
+        if (entry.getValue() != null) {
+          builder.addField(key, String.valueOf(value).equals(entry.getValue()) ? 1 : 0);
         } else {
-            builder.addField(key, String.valueOf(value));
+          if (value instanceof Boolean) {
+              builder.addField(key, ((Boolean)value).booleanValue());
+          } else if (value instanceof Number) {
+              builder.addField(key, (Number)value);
+          } else {
+              builder.addField(key, String.valueOf(value));
+          }
         }
       }
 
@@ -229,7 +248,7 @@ public class InfluxOutput implements MessageOutput {
 
             configurationRequest.addField(new TextField(
                             CK_INFLUX_FIELDS, "Extract fields", "",
-                            "Source fields to use as Influx value (comma-separated names).",
+                            "Source fields to use as Influx value (comma-separated names). If the field is not a number, it can be converted to 0 or 1 by matching its value (eg. text_field=myvalue).",
                             ConfigurationField.Optional.NOT_OPTIONAL)
             );
             return configurationRequest;
