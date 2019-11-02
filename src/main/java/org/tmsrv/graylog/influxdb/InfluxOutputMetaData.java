@@ -5,7 +5,7 @@ import org.graylog2.plugin.ServerStatus;
 import org.graylog2.plugin.Version;
 
 import java.net.URI;
-import java.util.Collections;
+import java.util.EnumSet;
 import java.util.Set;
 
 
