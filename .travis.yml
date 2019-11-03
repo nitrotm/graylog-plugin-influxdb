@@ -2,5 +2,6 @@ language: java
 deploy:
   provider: releases
   file: target/graylog-plugin-influxdb*.jar
+  overwrite: true
   on.tags: true
   edge: true
