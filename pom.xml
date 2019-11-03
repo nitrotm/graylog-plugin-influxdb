@@ -7,7 +7,7 @@
 
     <groupId>org.tmsrv.graylog</groupId>
     <artifactId>graylog-plugin-influxdb</artifactId>
-    <version>1.0</version>
+    <version>1.0.0</version>
     <packaging>jar</packaging>
 
     <name>${project.artifactId}</name>
@@ -28,20 +28,11 @@
         <tag>HEAD</tag>
     </scm>
 
-    <!--
-    <distributionManagement>
-       <repository>
-          <id>github</id>
-          <name>GitHub nitrotm Apache Maven Packages</name>
-          <url>https://maven.pkg.github.com/nitrotm/graylog-plugin-influxdb</url>
-       </repository>
-    </distributionManagement>
-    -->
-
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
+        <maven.test.skip>true</maven.test.skip>
         <maven.install.skip>true</maven.install.skip>
         <maven.deploy.skip>true</maven.deploy.skip>
         <maven.site.skip>true</maven.site.skip>

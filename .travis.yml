@@ -3,5 +3,11 @@ deploy:
   provider: releases
   file: target/graylog-plugin-influxdb*.jar
   overwrite: true
-  on.tags: true
+  cleanup: true
   edge: true
+  on:
+    all_branches: true
+    condition: $TRAVIS_BRANCH =~ ^[0-9]+\.[0-9.]+$
+cache:
+  directories:
+    - $HOME/.m2

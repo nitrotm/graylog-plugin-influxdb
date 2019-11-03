@@ -1,5 +1,7 @@
 # InfluxDB Plugin for Graylog
 
+[![Build Status](https://travis-ci.com/nitrotm/graylog-plugin-influxdb.svg?branch=master)](https://travis-ci.com/nitrotm/graylog-plugin-influxdb)
+
 An output plugin for integrating [InfluxDB](http://www.influxdata.com) with [Graylog](https://www.graylog.org).
 
 **Required Graylog version:** 2.0 and later
