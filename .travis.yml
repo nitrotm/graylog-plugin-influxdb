@@ -1,12 +1,16 @@
 language: java
+jdk:
+  - oraclejdk8
+before_deploy:
+  - find target -type f -name 'original-*.jar' -delete
 deploy:
   provider: releases
-  file: target/graylog-plugin-influxdb-*.jar
+  file: 'target/*.jar'
   overwrite: true
   edge: true
   on:
     all_branches: true
-    condition: $TRAVIS_BRANCH =~ ^[0-9]+\.[0-9.]+$
+    condition: '$TRAVIS_BRANCH =~ ^[0-9]+\.[0-9.]+$'
 cache:
   directories:
     - $HOME/.m2

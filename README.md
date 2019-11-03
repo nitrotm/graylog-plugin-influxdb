@@ -1,5 +1,7 @@
 # InfluxDB Plugin for Graylog
 
+[![Github Downloads](https://img.shields.io/github/downloads/nitrotm/graylog-plugin-influxdb/total.svg)](https://github.com/nitrotm/graylog-plugin-influxdb/releases)
+[![GitHub Release](https://img.shields.io/github/release/nitrotm/graylog-plugin-influxdb.svg)](https://github.com/nitrotm/graylog-plugin-influxdb/releases)
 [![Build Status](https://travis-ci.com/nitrotm/graylog-plugin-influxdb.svg?branch=master)](https://travis-ci.com/nitrotm/graylog-plugin-influxdb)
 [![License](https://img.shields.io/github/license/nitrotm/graylog-plugin-influxdb)](https://www.apache.org/licenses/LICENSE-2.0.txt)
 
@@ -45,7 +47,7 @@ This project is using Maven 3 and requires Java 8 or higher.
 * Clone this repository.
 * Run `mvn package` to build a JAR file.
 
-## Plugin Release (TODO)
+## Plugin Release
 
 We are using the maven release plugin:
 
