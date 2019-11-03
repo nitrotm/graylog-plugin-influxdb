@@ -40,7 +40,7 @@ public class InfluxOutput implements MessageOutput {
     private static final String CK_INFLUX_USERNAME = "influx_user";
     private static final String CK_INFLUX_PASSWORD = "influx_password";
     private static final String CK_INFLUX_DATABASE = "influx_database";
-    private static final String CK_INFLUX_SERIE = "influx_serie";
+    private static final String CK_INFLUX_MEASUREMENT = "influx_measurement";
     private static final String CK_INFLUX_TAGS = "influx_tags";
     private static final String CK_INFLUX_FIELDS = "influx_fields";
 
@@ -158,7 +158,7 @@ public class InfluxOutput implements MessageOutput {
     }
 
     private Point buildPoint(Message message) {
-      Point.Builder builder = Point.measurement(configuration.getString(CK_INFLUX_SERIE))
+      Point.Builder builder = Point.measurement(configuration.getString(CK_INFLUX_MEASUREMENT))
         .time(message.getTimestamp().getMillis(), TimeUnit.MILLISECONDS)
         .tag("source", message.getSource());
       Map<String, Object> fields = message.getFields();
@@ -235,8 +235,8 @@ public class InfluxOutput implements MessageOutput {
             );
 
             configurationRequest.addField(new TextField(
-                            CK_INFLUX_SERIE, "Serie", "graylog",
-                            "Serie name",
+                            CK_INFLUX_MEASUREMENT, "Measurement", "graylog",
+                            "Measurement name",
                             ConfigurationField.Optional.NOT_OPTIONAL)
             );
 
