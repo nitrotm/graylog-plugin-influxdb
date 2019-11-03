@@ -1,1 +1,5 @@
 language: java
+deploy:
+  provider: releases
+  file: target/graylog-plugin-influxdb*.jar
+  edge: true
