@@ -10,11 +10,9 @@ This project is using Maven 3 and requires Java 8 or higher.
 
 ## Installation
 
-[Download the plugin](https://github.com/nitrotm/graylog-plugin-influx)
+[Download the release](https://github.com/nitrotm/graylog-plugin-influx)
 
-* Clone this repository.
-* Run `mvn package` to build a JAR file.
-* Copy generated JAR file in target directory to your Graylog plugin directory.
+* Copy JAR file in target directory to your Graylog plugin directory.
 * Restart the Graylog.
 
 The plugin directory is the `plugins/` folder relative from your `graylog-server` directory by default
@@ -41,7 +39,8 @@ Note: it's possible to map a text-field to a numeric value (`0` or `1`) by match
 
 This project is using Maven 3 and requires Java 8 or higher.
 
-You can build a plugin (JAR) with `mvn package`.
+* Clone this repository.
+* Run `mvn package` to build a JAR file.
 
 ## Plugin Release (TODO)
 
