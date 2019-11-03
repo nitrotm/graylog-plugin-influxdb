@@ -1,9 +1,8 @@
 language: java
 deploy:
   provider: releases
-  file: target/graylog-plugin-influxdb*.jar
+  file: target/graylog-plugin-influxdb-*.jar
   overwrite: true
-  cleanup: true
   edge: true
   on:
     all_branches: true
