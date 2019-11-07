@@ -56,7 +56,14 @@ Tags are simply mapped as strings from source message fields.
 
 ### Fields
 
-Fields are simply mapped as numbers from source message fields.
+Fields are mapped by default as numbers from source message fields. To override the InfluxDB field type:
+
+* `B:myfield`: map as boolean
+* `I:myfield`: map as integer (long)
+* `F:myfield`: map as float (double)
+* `S:myfield`: map as string
+
+Note that the field's type must be consistent across measurements.
 
 It's possible to map a text-field to a numeric value (`0` or `1`) by matching a specific value for equality (eg. `duration,status=up` will store graylog message field `duration` as a number and map field `status` to `1` when the value is `up` otherwise `0`).
 
