@@ -27,18 +27,40 @@ Restart `graylog-server` and you are done.
 
 ## Usage
 
-You should now be able to add an Influx output to your streams through the option `Manage outputs`.
+You should now be able to add an InfluxDB output to your streams through the option `Manage outputs`.
 
 Parameters:
 
-* influx_url: InfluxDB server url (eg. `http://localhost:8086`).
+* influx_url: InfluxDB server url (eg. `http://localhost:8086`)
 * influx_user, influx_password: InfluxDB credentials
 * influx_database: InfluxDB database name
 * influx_measurement: InfluxDB measurement name
-* influx_tags: comma-separated fields attached as tags on data points (eg. `source,service`).
-* influx_fields: comma-separated numeric fields attached as values on data points (eg. `duration,started_at`).
+* influx_filters: list of filters to match against fields
+* influx_tags: list of fields attached as tags on data points (eg. `source,service`)
+* influx_fields: list of numeric fields attached as values on data points (eg. `duration,started_at`)
 
-Note: it's possible to map a text-field to a numeric value (`0` or `1`) by matching a specific value for equality (eg. `duration,status=up` will store graylog message field `duration` as a number and map field `status` to `1` when the value is `up` otherwise `0`).
+### Filters
+
+A message will be streamed to InfluxDB only if all filters are matching positively the source message.
+
+* `myfield`: match if field `myfield` exists in message.
+* `!myfield`: match if field `myfield` doesn't exist in message.
+* `myfield=val`: match if field `myfield` exists and is equals to `val`.
+* `myfield!=val`: match if field `myfield` doesn't exist nor is equal to `val`.
+* `myfield~regex`: match if field `myfield` exists and matches regular expression `regex`.
+* `myfield!~regex`: match if field `myfield` doesn't exist nor matches regular expression `regex`.
+
+### Tags
+
+Tags are simply mapped as strings from source message fields.
+
+### Fields
+
+Fields are simply mapped as numbers from source message fields.
+
+It's possible to map a text-field to a numeric value (`0` or `1`) by matching a specific value for equality (eg. `duration,status=up` will store graylog message field `duration` as a number and map field `status` to `1` when the value is `up` otherwise `0`).
+
+Alternatively, the boolean match can be done with a regular expression (eg. `status~one|two` will map field `status` to `1` when the value contains `one` or `two` otherwise `0`).
 
 ## Build
 

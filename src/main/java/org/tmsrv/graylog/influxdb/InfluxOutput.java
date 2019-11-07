@@ -1,6 +1,7 @@
 package org.tmsrv.graylog.influxdb;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -10,6 +11,8 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.TimeUnit;
 
+import java.util.regex.Pattern;
+
 import javax.inject.Inject;
 
 import com.google.inject.assistedinject.Assisted;
@@ -18,6 +21,7 @@ import org.graylog2.plugin.Message;
 import org.graylog2.plugin.configuration.Configuration;
 import org.graylog2.plugin.configuration.ConfigurationRequest;
 import org.graylog2.plugin.configuration.fields.ConfigurationField;
+import org.graylog2.plugin.configuration.fields.ListField;
 import org.graylog2.plugin.configuration.fields.TextField;
 import org.graylog2.plugin.outputs.MessageOutput;
 import org.graylog2.plugin.streams.Stream;
@@ -41,14 +45,16 @@ public class InfluxOutput implements MessageOutput {
     private static final String CK_INFLUX_PASSWORD = "influx_password";
     private static final String CK_INFLUX_DATABASE = "influx_database";
     private static final String CK_INFLUX_MEASUREMENT = "influx_measurement";
+    private static final String CK_INFLUX_FILTERS = "influx_filters";
     private static final String CK_INFLUX_TAGS = "influx_tags";
     private static final String CK_INFLUX_FIELDS = "influx_fields";
 
     private static final Logger LOG = LoggerFactory.getLogger(InfluxOutput.class);
 
     private Configuration configuration;
+    private List<FieldMatcher> matchers = new ArrayList<FieldMatcher>();
     private Set<String> tags = new HashSet<String>();
-    private Map<String, String> fields = new HashMap<String, String>();
+    private List<FieldMapper> mappers = new ArrayList<FieldMapper>();
 
     private final AtomicBoolean isRunning = new AtomicBoolean(false);
 
@@ -71,26 +77,14 @@ public class InfluxOutput implements MessageOutput {
       this.influxDB.setDatabase(database);
       this.influxDB.enableBatch(BatchOptions.DEFAULTS);
 
-      for (String item : configuration.getString(CK_INFLUX_TAGS).split(",")) {
-        item = item.trim();
-        if (item.length() == 0) {
-          continue;
-        }
-        this.tags.add(item);
+      for (String item : configuration.getList(CK_INFLUX_FILTERS)) {
+        this.matchers.add(this.buildMatcher(item));
       }
-      for (String item : configuration.getString(CK_INFLUX_FIELDS).split(",")) {
-        item = item.trim();
-        if (item.length() == 0) {
-          continue;
-        }
-        if (item.indexOf('=') > 0) {
-          String key = item.substring(0, item.indexOf('=')).trim();
-          String value = item.substring(item.indexOf('=') + 1).trim();
-
-          this.fields.put(key, value);
-        } else {
-          this.fields.put(item, null);
-        }
+      for (String item : configuration.getList(CK_INFLUX_TAGS)) {
+        this.tags.add(item.trim());
+      }
+      for (String item : configuration.getList(CK_INFLUX_FIELDS)) {
+        this.mappers.add(this.buildMapper(item));
       }
       this.isRunning.set(true);
 
@@ -163,35 +157,189 @@ public class InfluxOutput implements MessageOutput {
         .tag("source", message.getSource());
       Map<String, Object> fields = message.getFields();
 
+      for (FieldMatcher matcher : this.matchers) {
+        String key = matcher.field();
+
+        if (!matcher.match(fields.get(key))) {
+          return null;
+        }
+      }
       for (String key : this.tags) {
         Object value = fields.get(key);
 
-        if (value == null) {
-          return null;
-        }
-        builder.tag(key, String.valueOf(value));
-      }
-      for (Map.Entry<String, String> entry : this.fields.entrySet()) {
-        String key = entry.getKey();
-        Object value = fields.get(key);
-
-        if (value == null) {
-          return null;
-        }
-        if (entry.getValue() != null) {
-          builder.addField(key, String.valueOf(value).equals(entry.getValue()) ? 1 : 0);
-        } else {
-          if (value instanceof Boolean) {
-              builder.addField(key, ((Boolean)value).booleanValue());
-          } else if (value instanceof Number) {
-              builder.addField(key, (Number)value);
-          } else {
-              builder.addField(key, String.valueOf(value));
-          }
+        if (value != null) {
+          builder.tag(key, String.valueOf(value));
         }
       }
+      for (FieldMapper mapper : this.mappers) {
+        String key = mapper.field();
+        Object value = mapper.map(fields.get(key));
 
+        if (value instanceof Boolean) {
+            builder.addField(key, ((Boolean)value).booleanValue());
+        } else if (value instanceof Number) {
+            builder.addField(key, (Number)value);
+        } else if (value != null) {
+            builder.addField(key, String.valueOf(value));
+        }
+      }
       return builder.build();
+    }
+
+    private FieldMatcher buildMatcher(String source) {
+      source = source.trim();
+      if (source.length() == 0) {
+        throw new IllegalArgumentException("Matcher source is empty");
+      }
+      if (source.indexOf("!=") > 0) {
+        String key = source.substring(0, source.indexOf("!=")).trim();
+        String value = source.substring(source.indexOf("!=") + 2).trim();
+
+        return new StringFieldMatcher(key, true, value, true);
+      }
+      if (source.indexOf('=') > 0) {
+        String key = source.substring(0, source.indexOf('=')).trim();
+        String value = source.substring(source.indexOf('=') + 1).trim();
+
+        return new StringFieldMatcher(key, false, value, true);
+      }
+      if (source.indexOf("!~") > 0) {
+        String key = source.substring(0, source.indexOf("!~")).trim();
+        String value = source.substring(source.indexOf("!~") + 2).trim();
+
+        return new RegexFieldMatcher(key, true, value, 0);
+      }
+      if (source.indexOf('~') > 0) {
+        String key = source.substring(0, source.indexOf('~')).trim();
+        String value = source.substring(source.indexOf('~') + 1).trim();
+
+        return new RegexFieldMatcher(key, false, value, 0);
+      }
+      if (source.startsWith("!")) {
+        return new ConstantFieldMatcher(source.substring(1), true);
+      }
+      return new ConstantFieldMatcher(source, false);
+    }
+
+    private FieldMapper buildMapper(String source) {
+      source = source.trim();
+      if (source.length() == 0) {
+        throw new IllegalArgumentException("Mapper source is empty");
+      }
+      if (source.indexOf('=') > 0 || source.indexOf('~') > 0) {
+        try {
+          return new BooleanFieldMapper(this.buildMatcher(source));
+        } catch (IllegalArgumentException e) {
+          throw new IllegalArgumentException("Boolean mapper error (" + e + ")", e);
+        }
+      }
+      return new IdentityFieldMapper(source);
+    }
+
+    private static interface FieldMatcher {
+      String field();
+      boolean match(Object value);
+    }
+
+    private static abstract class AbstractFieldMatcher implements FieldMatcher {
+      private final String _field;
+      private final boolean _negate;
+
+      AbstractFieldMatcher(String field, boolean negate) {
+        this._field = field;
+        this._negate = negate;
+      }
+
+      public String field() {
+        return this._field;
+      }
+
+      public final boolean match(Object value) {
+        return this._negate ? !this.matchImpl(value) : this.matchImpl(value);
+      }
+
+      abstract boolean matchImpl(Object value);
+    }
+
+    private static class ConstantFieldMatcher extends AbstractFieldMatcher {
+      ConstantFieldMatcher(String field, boolean negate) {
+        super(field, negate);
+      }
+
+      boolean matchImpl(Object value) {
+        return value != null;
+      }
+    }
+
+    private static class StringFieldMatcher extends AbstractFieldMatcher {
+      private final String _value;
+      private final boolean _caseSensitive;
+
+      StringFieldMatcher(String field, boolean negate, String value, boolean caseSensitive) {
+        super(field, negate);
+        this._value = value;
+        this._caseSensitive = caseSensitive;
+      }
+
+      boolean matchImpl(Object value) {
+        if (value == null) {
+          return false;
+        }
+        return this._caseSensitive ? this._value.equals(String.valueOf(value)) : this._value.equalsIgnoreCase(String.valueOf(value));
+      }
+    }
+
+    private static class RegexFieldMatcher extends AbstractFieldMatcher {
+      private final Pattern _regex;
+
+      RegexFieldMatcher(String field, boolean negate, String regex, int flags) {
+        super(field, negate);
+        this._regex = Pattern.compile(regex, flags);
+      }
+
+      boolean matchImpl(Object value) {
+        if (value == null) {
+          return false;
+        }
+        return this._regex.matcher(String.valueOf(value)).matches();
+      }
+    }
+
+    private static interface FieldMapper {
+      String field();
+      Object map(Object value);
+    }
+
+    private static class IdentityFieldMapper implements FieldMapper {
+      private final String _field;
+
+      IdentityFieldMapper(String field) {
+        this._field = field;
+      }
+
+      public String field() {
+        return this._field;
+      }
+
+      public Object map(Object value) {
+        return value;
+      }
+    }
+
+    private static class BooleanFieldMapper implements FieldMapper {
+      private final FieldMatcher _matcher;
+
+      BooleanFieldMapper(FieldMatcher matcher) {
+        this._matcher = matcher;
+      }
+
+      public String field() {
+        return this._matcher.field();
+      }
+
+      public Object map(Object value) {
+        return this._matcher.match(value) ? 1 : 0;
+      }
     }
 
     public interface Factory extends MessageOutput.Factory<InfluxOutput> {
@@ -217,15 +365,16 @@ public class InfluxOutput implements MessageOutput {
             );
 
             configurationRequest.addField(new TextField(
-                            CK_INFLUX_USERNAME, "Username", "root",
+                            CK_INFLUX_USERNAME, "Username", "",
                             "Username to connect to database",
                             ConfigurationField.Optional.OPTIONAL)
             );
 
             configurationRequest.addField(new TextField(
-                            CK_INFLUX_PASSWORD, "Password", "root",
+                            CK_INFLUX_PASSWORD, "Password", "",
                             "Password to connect to database",
-                            ConfigurationField.Optional.OPTIONAL)
+                            ConfigurationField.Optional.OPTIONAL,
+                            TextField.Attribute.IS_PASSWORD)
             );
 
             configurationRequest.addField(new TextField(
@@ -240,15 +389,21 @@ public class InfluxOutput implements MessageOutput {
                             ConfigurationField.Optional.NOT_OPTIONAL)
             );
 
-            configurationRequest.addField(new TextField(
-                            CK_INFLUX_TAGS, "Extract tags", "",
-                            "Source fields to use as Influx tags (comma-separated names).",
+            configurationRequest.addField(new ListField(
+                            CK_INFLUX_FILTERS, "Filters", Collections.emptyList(),
+                            "Filters on source fields (name and optional value). A name can be prefix by ! to negate match. A value to match can be optionally given (eg. my_field=myvalue or my_field~myregexp).",
                             ConfigurationField.Optional.OPTIONAL)
             );
 
-            configurationRequest.addField(new TextField(
-                            CK_INFLUX_FIELDS, "Extract fields", "",
-                            "Source fields to use as Influx value (comma-separated names). If the field is not a number, it can be converted to 0 or 1 by matching its value (eg. text_field=myvalue).",
+            configurationRequest.addField(new ListField(
+                            CK_INFLUX_TAGS, "Extract tags", Collections.emptyList(),
+                            "Source fields to use as Influx tags (name).",
+                            ConfigurationField.Optional.OPTIONAL)
+            );
+
+            configurationRequest.addField(new ListField(
+                            CK_INFLUX_FIELDS, "Extract fields", Collections.emptyList(),
+                            "Source fields to use as Influx value (name and optional value). If the field is not a number, it can be converted to 0 or 1 by matching its value (eg. text_field=myvalue or text_field~myregexp).",
                             ConfigurationField.Optional.NOT_OPTIONAL)
             );
             return configurationRequest;
