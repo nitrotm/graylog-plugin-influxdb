@@ -392,19 +392,22 @@ public class InfluxOutput implements MessageOutput {
             configurationRequest.addField(new ListField(
                             CK_INFLUX_FILTERS, "Filters", Collections.emptyList(),
                             "Filters on source fields (name and optional value). A name can be prefix by ! to negate match. A value to match can be optionally given (eg. my_field=myvalue or my_field~myregexp).",
-                            ConfigurationField.Optional.OPTIONAL)
+                            ConfigurationField.Optional.OPTIONAL,
+                            ListField.Attribute.ALLOW_CREATE)
             );
 
             configurationRequest.addField(new ListField(
                             CK_INFLUX_TAGS, "Extract tags", Collections.emptyList(),
                             "Source fields to use as Influx tags (name).",
-                            ConfigurationField.Optional.OPTIONAL)
+                            ConfigurationField.Optional.OPTIONAL,
+                            ListField.Attribute.ALLOW_CREATE)
             );
 
             configurationRequest.addField(new ListField(
                             CK_INFLUX_FIELDS, "Extract fields", Collections.emptyList(),
                             "Source fields to use as Influx value (name and optional value). If the field is not a number, it can be converted to 0 or 1 by matching its value (eg. text_field=myvalue or text_field~myregexp).",
-                            ConfigurationField.Optional.NOT_OPTIONAL)
+                            ConfigurationField.Optional.NOT_OPTIONAL,
+                            ListField.Attribute.ALLOW_CREATE)
             );
             return configurationRequest;
         }
