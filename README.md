@@ -9,6 +9,8 @@ An output plugin for integrating [InfluxDB](http://www.influxdata.com) with [Gra
 
 **Required Graylog version:** 2.0 and later
 
+**InfluxDB version:** 1.x (not compatible with 2.x)
+
 ## Getting started
 
 This project is using Maven 3 and requires Java 8 or higher.
