@@ -7,7 +7,7 @@
 
     <groupId>org.tmsrv.graylog</groupId>
     <artifactId>graylog-plugin-influxdb</artifactId>
-    <version>1.0.8-SNAPSHOT</version>
+    <version>1.0.8</version>
     <packaging>jar</packaging>
 
     <name>${project.artifactId}</name>
@@ -33,7 +33,7 @@
         <connection>scm:git:git@github.com:nitrotm/graylog-plugin-influxdb.git</connection>
         <developerConnection>scm:git:git@github.com:nitrotm/graylog-plugin-influxdb.git</developerConnection>
         <url>https://github.com/nitrotm/graylog-plugin-influxdb</url>
-        <tag>HEAD</tag>
+        <tag>1.0.8</tag>
     </scm>
 
     <properties>
