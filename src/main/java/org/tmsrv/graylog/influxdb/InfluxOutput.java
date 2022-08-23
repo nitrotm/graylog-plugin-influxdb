@@ -240,6 +240,10 @@ public class InfluxOutput implements MessageOutput {
                 values.put(key, value);
             }
         }
+        if (values.isEmpty()) {
+          LOG.debug("InfluxDB output matched but no value extracted (" + message + ")");
+          return null;
+        }
         return Point.measurement(configuration.getString(CK_INFLUX_MEASUREMENT))
             .time(message.getTimestamp().getMillis(), TimeUnit.MILLISECONDS)
             .tag("source", message.getSource())
